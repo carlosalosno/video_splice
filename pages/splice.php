@@ -33,7 +33,7 @@ if (getval("splice","")!="" && count($videos)>1 && enforcePostRequest(false))
 	$ref=copy_resource($videos[0]["ref"]);	# Base new resource on first video (top copy metadata).
 
 	# Set parent resource field details.
-	global $videosplice_parent_field;
+	global $videosplice_parent_field,$cut_original;
 	$resources="";
 	for ($n=0;$n<count($videos);$n++)
 		{
@@ -48,6 +48,7 @@ if (getval("splice","")!="" && count($videos)>1 && enforcePostRequest(false))
 	$ffmpeg_fullpath = get_utility_path("ffmpeg");
 
 	$vidlist="";
+
 	# Create FFMpeg syntax to merge all additional videos.
 	for ($n=0;$n<count($videos);$n++)
 		{
@@ -66,12 +67,13 @@ if (getval("splice","")!="" && count($videos)>1 && enforcePostRequest(false))
 		$intermediary = get_temp_dir() . "/video_splice_temp_" . $videos[$n]["ref"] . ".mpg";
 		if ($config_windows) {$intermediary = str_replace("/", "\\", $intermediary);}
 		$shell_exec_cmd = $ffmpeg_fullpath . " -y -i " . escapeshellarg($source);
-		$shell_exec_cmd .= ($ffmpeg_use_qscale)? " -target ntsc-vcd " : " -sampleq ";
+		$shell_exec_cmd .= ($ffmpeg_use_qscale)? " -codec:v mpeg2video -qscale:v 4 -vf scale=1920:1080 -codec:a mp2 -b:a 192k " : " -sampleq ";
 		$shell_exec_cmd .= escapeshellarg($intermediary);
 		$output = exec($shell_exec_cmd);
 		$vidlist.= " " . escapeshellarg($intermediary);
 		}
 	$vidlist = trim($vidlist);
+
 	
 	# Target is the first file.
 	$targetmpg = get_resource_path($ref,true,"",true,"mpg",-1,1,false,"",-1,false);
