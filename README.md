@@ -8,5 +8,5 @@ the file /hooks/view.php get this variable and cut form original or preview vide
 
 I modified /pages/slice.php to set a HD MPEG 2 Hig Quality encoding profile like intermetiate format for Splice
 
-#todo
+I would like to add the output options to the Splice interface, to select Intermediate format there for avery splice output, sometimes would be nice to get the outpput in HD or 2K or 4K or web resolution
 
