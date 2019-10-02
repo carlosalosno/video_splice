@@ -68,7 +68,6 @@ function HookVideo_spliceViewAfterresourceactions()
 				}
 			else
 				{	
-			
 					if (file_exists(get_resource_path($ref,true,"pre",false,$ffmpeg_preview_extension)))
 						{
 						$source=get_resource_path($ref,true,"pre",false,$ffmpeg_preview_extension,-1,1,false,"",-1,false);
@@ -112,15 +111,32 @@ function HookVideo_spliceViewAfterresourceactions()
 				$source_temp = get_temp_dir() . "/vs_s" . $ref . $source_ext;
 				$source_temp = str_replace("/", "\\", $source_temp);
 				copy($source, $source_temp);
-				$shell_exec_cmd = $ffmpeg_fullpath . " -y -i " . escapeshellarg($source_temp) . " -ss $ss -t $t -c copy " . ($use_avconv ? '-strict experimental -acodec copy ' : '') . escapeshellarg($target_temp);
-				$output = exec($shell_exec_cmd);
+				if ($cut_original) // If is original file copy the codec
+					{
+						$shell_exec_cmd = $ffmpeg_fullpath . " -y -i " . escapeshellarg($source) . " -ss $ss -t $t -c copy " . ($use_avconv ? '-strict experimental -acodec copy ' : '') . escapeshellarg($target);
+						$output = exec($shell_exec_cmd);
+					}
+					else
+					{
+						$shell_exec_cmd = $ffmpeg_fullpath . " -y -i " . escapeshellarg($source) . " -ss $ss -t $t " . ($use_avconv ? '-strict experimental -acodec copy ' : '') . escapeshellarg($target);
+						$output = exec($shell_exec_cmd);
+					}
 				rename($target_temp, $target);
 				unlink($source_temp);
 				}
 			else
 				{
-				$shell_exec_cmd = $ffmpeg_fullpath . " -y -i " . escapeshellarg($source) . " -ss $ss -t $t -c copy " . ($use_avconv ? '-strict experimental -acodec copy ' : '') . escapeshellarg($target);
-				$output = exec($shell_exec_cmd);
+					if ($cut_original) // If is original file copy the codec
+					{
+						$shell_exec_cmd = $ffmpeg_fullpath . " -y -i " . escapeshellarg($source) . " -ss $ss -t $t -c copy " . ($use_avconv ? '-strict experimental -acodec copy ' : '') . escapeshellarg($target);
+						$output = exec($shell_exec_cmd);
+					}
+					else
+					{
+						$shell_exec_cmd = $ffmpeg_fullpath . " -y -i " . escapeshellarg($source) . " -ss $ss -t $t " . ($use_avconv ? '-strict experimental -acodec copy ' : '') . escapeshellarg($target);
+						$output = exec($shell_exec_cmd);
+					}
+				
 				}
 			#echo "<p>" . $shell_exec_cmd . "</p>";
 
