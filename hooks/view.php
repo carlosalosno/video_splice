@@ -35,7 +35,7 @@ function HookVideo_spliceViewAfterresourceactions()
 		# Any problems?
 		if ($seconds<=0) {$error = $lang["error-from_time_after_to_time"];}
 		
-		# Convert seconds to HH:MM:SS as required by FFmpeg.
+		# Convert seconds to a duration in HH:MM:SS format as required by FFmpeg.
 		$dh=floor($seconds/(60*60));
 		$dm=floor(($seconds-($dh*60*60))/60);
 		$ds=floor($seconds-($dh*60*60)-($dm*60));
@@ -51,9 +51,11 @@ function HookVideo_spliceViewAfterresourceactions()
 			}
 		else
 			{
-			# Process video.
+			# Process video
+			# Set up the "ss" start timepoint which will be used in fast seek mode (ss is before the input file parameter) 
 			$ss=$fh . ":" . $fm . ":" . $fs;
-			$t=str_pad($dh,2,"0",STR_PAD_LEFT) . ":" . str_pad($dm,2,"0",STR_PAD_LEFT) . ":" . str_pad($ds,2,"0",STR_PAD_LEFT);
+			# Fast seek mode means that the "to" timepoint is effectively the duration
+			$to=str_pad($dh,2,"0",STR_PAD_LEFT) . ":" . str_pad($dm,2,"0",STR_PAD_LEFT) . ":" . str_pad($ds,2,"0",STR_PAD_LEFT);
 			
 			# Establish FFMPEG location.
 			$ffmpeg_fullpath = get_utility_path("ffmpeg");
@@ -62,9 +64,13 @@ function HookVideo_spliceViewAfterresourceactions()
 
 			# Work out source/destination
 			global $ffmpeg_preview_extension;
-			if ($cut_original)   // check if the configuration is set to cut form original video file
+
+			
+						
+			if($cut_original)   // check if the configuration is set to cut form original video file
 				{
-					$source=get_resource_path($ref,true,"",false,$ffmpeg_preview_extension,-1,1,false,"",-1,false);
+					$extension=sql_value("select file_extension value from resource where ref=$ref","");
+					$source=get_resource_path($ref,true,"",false,$extension,-1,1,false,"",-1,false);
 				}
 			else
 				{	
@@ -113,14 +119,12 @@ function HookVideo_spliceViewAfterresourceactions()
 				copy($source, $source_temp);
 				if ($cut_original) // If is original file copy the codec
 					{
-						$shell_exec_cmd = $ffmpeg_fullpath . " -y -i " . escapeshellarg($source) . " -ss $ss -t $t -c copy " . ($use_avconv ? '-strict experimental -acodec copy ' : '') . escapeshellarg($target);
+						$shell_exec_cmd = $ffmpeg_fullpath . " -y -i " . escapeshellarg($source) . " -ss $ss -t $to -c copy " . ($use_avconv ? '-strict experimental -acodec copy ' : '') . escapeshellarg($target);
 						$output = exec($shell_exec_cmd);
 					}
 					else
-					{
-						$shell_exec_cmd = $ffmpeg_fullpath . " -y -i " . escapeshellarg($source) . " -ss $ss -t $t " . ($use_avconv ? '-strict experimental -acodec copy ' : '') . escapeshellarg($target);
+						$shell_exec_cmd = $ffmpeg_fullpath . " -y -ss $ss -i " . escapeshellarg($source_temp) . " -t $to " . ($use_avconv ? '-strict experimental -acodec copy ' : ' -c copy ') . escapeshellarg($target_temp);
 						$output = exec($shell_exec_cmd);
-					}
 				rename($target_temp, $target);
 				unlink($source_temp);
 				}
@@ -128,15 +132,13 @@ function HookVideo_spliceViewAfterresourceactions()
 				{
 					if ($cut_original) // If is original file copy the codec
 					{
-						$shell_exec_cmd = $ffmpeg_fullpath . " -y -i " . escapeshellarg($source) . " -ss $ss -t $t -c copy " . ($use_avconv ? '-strict experimental -acodec copy ' : '') . escapeshellarg($target);
+						$shell_exec_cmd = $ffmpeg_fullpath . " -y -i " . escapeshellarg($source) . " -ss $ss -t $to -c copy " . ($use_avconv ? '-strict experimental -acodec copy ' : '') . escapeshellarg($target);
 						$output = exec($shell_exec_cmd);
 					}
 					else
-					{
-						$shell_exec_cmd = $ffmpeg_fullpath . " -y -i " . escapeshellarg($source) . " -ss $ss -t $t " . ($use_avconv ? '-strict experimental -acodec copy ' : '') . escapeshellarg($target);
-						$output = exec($shell_exec_cmd);
-					}
-				
+						
+					$shell_exec_cmd = $ffmpeg_fullpath . " -y -ss $ss -i " . escapeshellarg($source) . " -t $to " . ($use_avconv ? '-strict experimental -acodec copy ' : ' -c copy ') . escapeshellarg($target);
+					$output = exec($shell_exec_cmd);
 				}
 			#echo "<p>" . $shell_exec_cmd . "</p>";
 
@@ -197,46 +199,31 @@ function HookVideo_spliceViewAfterresourceactions()
 </td></tr>
 
 <?php
-global $videojs;
 if (isset($preview) && $preview)
 	{
-	if (!$videojs) 
-		{ ?>
-		</table>
-		<p align="center">
-		<object type="application/x-shockwave-flash" data="<?php echo $baseurl_short?>lib/flashplayer/player_flv_maxi.swf" width="240" height="135">
-			 <param name="allowFullScreen" value="true" />
-			 <param name="movie" value="<?php echo $baseurl_short?>lib/flashplayer/player_flv_maxi.swf" />
-			 <param name="FlashVars" value="flv=<?php echo convert_path_to_url($target) ?>&amp;width=240&amp;height=135&amp;margin=0&amp;buffer=10&amp;showvolume=0&amp;volume=200&amp;showtime=0&amp;autoplay=1&amp;autoload=1&amp;showfullscreen=0&amp;showstop=0&amp;playercolor=<?php echo $colour?>" />
-		</object>
-		</p>
-		<?php 
-		} 
-	else 
-		{ 
-		?>
-<tr><td colspan=4 align="center">
-		<div class="videojscontent">
-			<video 
-				id="cutpreview"
-				data-setup="{}"
-				controls=""
-				width="240" 
-				height="135" 
-				class="video-js vjs-default-skin vjs-big-play-centered" 
-				poster=""
-			>
-			<source src="<?php echo convert_path_to_url($target) ?>" type="video/mp4"/>
-			<p class="vjs-no-js">To view this video please enable JavaScript, and consider upgrading to a web browser that <a href="http://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a></p>
-			<?php hook("html5videoextra"); ?>
-			</video>
-		
-		</div>
-</td></tr>
-<tr><td></td></tr>
-</table>
-		<?php
-		}
+	$random_param=rand();
+	?>
+	<tr><td colspan=4 align="center">
+	<div class="videojscontent">
+		<video 
+			id="cutpreview"
+			data-setup="{}"
+			controls=""
+			width="240" 
+			height="135" 
+			class="video-js vjs-default-skin vjs-big-play-centered" 
+			poster=""
+		>
+		<source src="<?php echo convert_path_to_url($target)."?alwaysload=$random_param" ?>" type="video/mp4"/>
+		<p class="vjs-no-js">To view this video please enable JavaScript, and consider upgrading to a web browser that <a href="http://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a></p>
+		<?php hook("html5videoextra"); ?>
+		</video>
+
+	</div>
+	</td></tr>
+	<tr><td></td></tr>
+	</table>
+	<?php
 	}
 	else
 	{
